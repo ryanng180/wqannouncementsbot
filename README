@@ -1,0 +1,134 @@
+# WorldQuant BRAIN Announcements Telegram Bot
+
+A private Telegram bot that automatically fetches **WorldQuant BRAIN platform announcements** and delivers them to Telegram.
+
+The bot is explicitly aligned to **US Eastern Time**, which is the time zone used by WorldQuant for publishing announcements.
+
+---
+
+## ✨ Features
+
+- 🔐 Authenticated via WorldQuant session cookie (`t=...`)
+- ⏰ **Daily polling at 00:00 US Eastern Time (America/New_York)**
+- 📬 Sends **all announcements since the last check**
+- ♻️ Persistent state across restarts (no duplicates)
+- 🚫 No repeated notifications
+- ⚠️ Graceful handling of expired authentication
+
+---
+
+## 🤖 Commands
+
+| Command | Description |
+|------|------------|
+| `/start` | Show bot usage |
+| `/watch` | Enable daily announcement delivery (00:00 US Eastern) |
+| `/unwatch` | Disable daily delivery |
+| `/latest` | Fetch the newest announcement immediately |
+| `/recent5` | Fetch the 5 most recent announcements |
+
+---
+
+## 🧠 How It Works
+
+### 1. Authentication
+- The bot does **not** log in programmatically.
+- It authenticates using a **session cookie (`t=...`)** copied from the WorldQuant BRAIN web app.
+- Secrets are stored in a local `.env` file and loaded at startup.
+
+---
+
+### 2. Time Zone Alignment (Key Design Choice)
+- WorldQuant announcements are timestamped and released in **US Eastern Time**.
+- The bot schedules its daily polling job at 00:00 America/New_York:
+- This ensures:
+  - Maximum alignment with WorldQuant’s release cadence
+  - Automatic handling of daylight saving time (EST ↔ EDT)
+
+---
+
+### 3. Daily Polling Logic
+Once per day at **00:00 US Eastern**:
+
+1. Fetch the latest announcements from the WorldQuant API
+2. For each subscribed chat:
+   - Compare announcements against the last delivered message ID
+   - Collect **all announcements published since the last run**
+   - Send them in **chronological order (oldest → newest)**
+3. Update persistent state to prevent duplicates
+
+If no new announcements exist, nothing is sent.
+
+---
+
+### 4. Persistent State
+The bot stores its state in a local file:
+This includes:
+- Chats that enabled `/watch`
+- The last announcement delivered per chat
+- Authentication-expiry notification status
+
+This guarantees:
+- No duplicate messages
+- Safe restarts
+- Deterministic behavior
+
+---
+
+### 5. Authentication Expiry Handling
+If the WorldQuant session cookie expires:
+- The API returns `401` or `403`
+- The bot sends a **one-time warning** to subscribed chats
+- Daily updates are automatically disabled
+
+To recover:
+1. Log in to WorldQuant BRAIN
+2. Copy a fresh `t=...` cookie
+3. Update `.env`
+4. Restart the bot
+5. Run `/watch` again
+
+---
+
+## 🛠️ Setup
+
+### 1️⃣ Clone the repository
+```bash
+git clone <your-repo-url>
+cd <repo-folder>
+
+### 2️⃣ Create and activate a virtual environment
+python -m venv .venv
+
+
+Windows (PowerShell)
+
+.\.venv\Scripts\Activate.ps1
+
+
+macOS / Linux
+
+source .venv/bin/activate
+
+### 3️⃣ Install dependencies
+pip install -r requirements.txt
+
+### 4️⃣ Create .env
+
+Create a file named .env in the project root:
+
+TG_BOT_TOKEN=your_telegram_bot_token_here
+WQ_COOKIE=t=your_worldquant_session_cookie_here
+
+
+### ⚠️ Do NOT commit .env.
+Ensure .env is listed in .gitignore.
+
+### 5️⃣ Run the bot
+python main.py
+
+
+Expected output:
+
+Starting bot...
+Bot running (daily poll at 00:00 US Eastern)...
